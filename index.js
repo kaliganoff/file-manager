@@ -1,5 +1,6 @@
 import os from "os";
 import path from "path";
+import fs from 'fs';
 
 const { stdin, stdout } = process;
 let dir = os.homedir();
@@ -20,6 +21,14 @@ stdin.on('data', (data) => {
     if (data.toString() === 'up' + os.EOL) {
         dir = path.join(dir, '..');
         console.log('You are currently in ' + dir);
+    }
+    if (data.toString() === 'ls' + os.EOL) {
+        fs.readdir(dir, { withFileTypes: true }, (err, dirents) => {
+            if (err) throw new Error('FS operation failed');
+            let directories = dirents.filter(item => item.isDirectory()).map(item => [item.name, 'directory']);
+            let files = dirents.filter(item => item.isFile()).map(item => [item.name, 'file']);
+            console.table([...directories, ...files])
+          });
     }
 });
 
