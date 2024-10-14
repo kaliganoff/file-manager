@@ -2,9 +2,8 @@ import os from "os";
 import path from "path";
 import fs from 'fs';
 import { createHash } from "crypto";
-import { createGunzip, createGzip } from "zlib";
+import { createBrotliCompress, createBrotliDecompress } from "zlib";
 import { pipeline } from "stream";
-import { error } from "console";
 
 const { stdin, stdout } = process;
 let dir = os.homedir();
@@ -125,7 +124,7 @@ if (data.toString().startsWith('rm')) {
         const filePath = data.toString().split(' ')[1].split(os.EOL)[0];
         fs.unlink(filePath, (err) => {
             if (err) {console.error('Operation failed');} else {
-                console.log('File moved successfully')
+                console.log('File deleted successfully')
             }        
         }); 
     } catch (error) {
@@ -151,7 +150,7 @@ if (data.toString().startsWith('hash')) {
 if (data.toString().startsWith('compress')) {
     const filePath = data.toString().split(' ')[1];
     const newPath = data.toString().split(' ')[2].split(os.EOL)[0];
-    const gzip = createGzip();
+    const gzip = createBrotliCompress();
     const source = fs.createReadStream(filePath);
     const destination = fs.createWriteStream(newPath);
 
@@ -167,7 +166,7 @@ if (data.toString().startsWith('compress')) {
 if (data.toString().startsWith('decompress')) {
     const filePath = data.toString().split(' ')[1];
     const newPath = data.toString().split(' ')[2].split(os.EOL)[0];
-    const gunzip = createGunzip();
+    const gunzip = createBrotliDecompress();
     const source = fs.createReadStream(filePath);
     const destination = fs.createWriteStream(newPath);
 
