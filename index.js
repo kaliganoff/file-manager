@@ -4,6 +4,7 @@ import fs from 'fs';
 import { createHash } from "crypto";
 import { createGunzip, createGzip } from "zlib";
 import { pipeline } from "stream";
+import { error } from "console";
 
 const { stdin, stdout } = process;
 let dir = os.homedir();
@@ -46,10 +47,11 @@ stdin.on('data', (data) => {
         }
     }
     if (data.toString().startsWith('cat')) {
-        const filePath = data.toString().split(' ')[1].split(os.EOL)[0];
         try {
+        const filePath = data.toString().split(' ')[1].split(os.EOL)[0];
         const readStream = fs.createReadStream(filePath, 'utf-8');
         readStream.on('data', (chunk) => stdout.write(chunk));
+        readStream.on('error', (error) => console.error('Operation failed'));
         readStream.on('end', () => stdout.write(os.EOL));
         } catch(error) {
             console.log('Invalid input')
@@ -72,10 +74,10 @@ stdin.on('data', (data) => {
         const exists = fs.existsSync(newPath);
         if (!exists) {
         fs.promises.rename(filePath, newPath).then(() => console.log('File renamed successfully')).catch(() => {
-            console.error('FS operation failed')
+            console.error('Operation failed')
         })
     } else {
-        console.error('FS operation failed')
+        console.error('Operation failed')
     }
     }
     if (data.toString().startsWith('cp')) {
@@ -87,10 +89,13 @@ stdin.on('data', (data) => {
             const writeStream = fs.createWriteStream(path.join(newDir + fileName), 'utf-8');
             readStream.pipe(writeStream);
             readStream.on('error', () => {
-                console.log('1')
+                console.log('Operation failed')
+            });
+            readStream.on('finish', () => {
+                console.log('File copied successfully')
             });
     } catch(error) {
-        console.log(error);
+        console.log('Invalid input');
     }
 }
 if (data.toString().startsWith('mv')) {
@@ -102,11 +107,13 @@ if (data.toString().startsWith('mv')) {
             const writeStream = fs.createWriteStream(path.join(newDir + fileName), 'utf-8');
             readStream.pipe(writeStream);
             readStream.on('error', () => {
-                console.log(1);
+                console.log('Operation failed');
             });
             readStream.on('close', () => {
                 fs.unlink(filePath, (err) => {
-                    if (err) console.error('Operation failed');
+                    if (err) {console.error('Operation failed');} else {
+                        console.log('File moved successfully')
+                    }
                   }); 
             })
     } catch(error) {
@@ -117,10 +124,12 @@ if (data.toString().startsWith('rm')) {
     try {
         const filePath = data.toString().split(' ')[1].split(os.EOL)[0];
         fs.unlink(filePath, (err) => {
-          if (err) console.error('Operation failed');
+            if (err) {console.error('Operation failed');} else {
+                console.log('File moved successfully')
+            }        
         }); 
     } catch (error) {
-        console.error(error);
+        console.error('Operation failed');
     }
 }
 if (data.toString().startsWith('hash')) {
@@ -133,7 +142,7 @@ if (data.toString().startsWith('hash')) {
        })
  try {
         const filePath = data.toString().split(' ')[1].split(os.EOL)[0];
-        getHash(filePath).then(value => console.log(value)).catch(error => console.log(error));
+        getHash(filePath).then(value => console.log(value)).catch(error => console.log('Operation failed'));
  }
  catch(error) {
     console.log(error);
@@ -148,8 +157,10 @@ if (data.toString().startsWith('compress')) {
 
     pipeline(source, gzip, destination, (err) => {
         if (err) {
-          console.error('An error occurred:', err);
+          console.error('Operation failed');
           process.exitCode = 1;
+        } else {
+            console.log('File compressed successfully')
         }
       });
 }
@@ -162,9 +173,35 @@ if (data.toString().startsWith('decompress')) {
 
     pipeline(source, gunzip, destination, (err) => {
         if (err) {
-          console.error('An error occurred:', err);
+          console.error('Operation failed');
           process.exitCode = 1;
+        } else {
+            console.log('File decompressed successfully')
         }
       });
 }
+if (data.toString() === 'os --EOL' + os.EOL) {
+    stdout.write(os.EOL);
+}
+if (data.toString() === 'os --cpus' + os.EOL) {
+    console.log(os.cpus())
+}
+if (data.toString() === 'os --homedir' + os.EOL) {
+    console.log(os.homedir())
+}
+if (data.toString() === 'os --username' + os.EOL) {
+    console.log(os.userInfo().username)
+}
+if (data.toString() === 'os --architecture' + os.EOL) {
+    console.log(os.arch())
+}
+if (data.toString().includes('.exit')) {
+    console.log(`Thank you for using File Manager, ${username}, goodbye!`);
+    process.exit();
+};
 });
+
+process.on('SIGINT', () => {
+    stdout.write(`Thank you for using File Manager, ${username}, goodbye!`);
+    process.exit();
+})
