@@ -1,6 +1,9 @@
 import os from "os";
 import path from "path";
 import fs from 'fs';
+import { createHash } from "crypto";
+import { createGunzip, createGzip } from "zlib";
+import { pipeline } from "stream";
 
 const { stdin, stdout } = process;
 let dir = os.homedir();
@@ -119,5 +122,49 @@ if (data.toString().startsWith('rm')) {
     } catch (error) {
         console.error(error);
     }
+}
+if (data.toString().startsWith('hash')) {
+    const getHash = path => new Promise((resolve, reject) => {
+        const hash = createHash('sha256');
+        const readStream = fs.createReadStream(path);
+        readStream.on('error', reject);
+        readStream.on('data', chunk => hash.update(chunk));
+        readStream.on('end', () => resolve(hash.digest('hex')));
+       })
+ try {
+        const filePath = data.toString().split(' ')[1].split(os.EOL)[0];
+        getHash(filePath).then(value => console.log(value)).catch(error => console.log(error));
+ }
+ catch(error) {
+    console.log(error);
+ }
+}
+if (data.toString().startsWith('compress')) {
+    const filePath = data.toString().split(' ')[1];
+    const newPath = data.toString().split(' ')[2].split(os.EOL)[0];
+    const gzip = createGzip();
+    const source = fs.createReadStream(filePath);
+    const destination = fs.createWriteStream(newPath);
+
+    pipeline(source, gzip, destination, (err) => {
+        if (err) {
+          console.error('An error occurred:', err);
+          process.exitCode = 1;
+        }
+      });
+}
+if (data.toString().startsWith('decompress')) {
+    const filePath = data.toString().split(' ')[1];
+    const newPath = data.toString().split(' ')[2].split(os.EOL)[0];
+    const gunzip = createGunzip();
+    const source = fs.createReadStream(filePath);
+    const destination = fs.createWriteStream(newPath);
+
+    pipeline(source, gunzip, destination, (err) => {
+        if (err) {
+          console.error('An error occurred:', err);
+          process.exitCode = 1;
+        }
+      });
 }
 });
